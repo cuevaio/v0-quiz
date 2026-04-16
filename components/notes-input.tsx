@@ -19,7 +19,7 @@ export function NotesInput({ notes, setNotes, onGenerate }: NotesInputProps) {
         <div className="text-center space-y-4">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground text-balance">
             Turn notes into{" "}
-            <span className="bg-accent px-3 py-1 rounded-lg">quizzes</span>
+            <span className="bg-green-500 px-3 py-1 rounded-lg">quizzes</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
             Paste your study notes and we&apos;ll generate an interactive quiz to test your knowledge.
