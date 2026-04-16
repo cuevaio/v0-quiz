@@ -1,76 +1,63 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useCallback, useState } from "react"
+
 import { NotesInput } from "@/components/notes-input"
 import { ProcessingScreen } from "@/components/processing-screen"
 import { Quiz } from "@/components/quiz"
 import { ResultsScreen } from "@/components/results-screen"
-import { type Question } from "@/components/question-card"
+import { type Question, type QuizAnswers } from "@/lib/quiz-schema"
 
 type Screen = "input" | "processing" | "quiz" | "results"
-
-// Hardcoded quiz questions (mixed types)
-const quizQuestions: Question[] = [
-  {
-    id: 1,
-    type: "single",
-    question: "What is the primary function of mitochondria in a cell?",
-    options: [
-      "Store genetic information",
-      "Produce energy (ATP)",
-      "Synthesize proteins",
-      "Break down waste products",
-    ],
-    correctAnswer: "Produce energy (ATP)",
-  },
-  {
-    id: 2,
-    type: "multiple",
-    question: "Which of the following are considered renewable energy sources?",
-    options: ["Solar power", "Natural gas", "Wind energy", "Coal", "Hydroelectric"],
-    correctAnswer: ["Solar power", "Wind energy", "Hydroelectric"],
-  },
-  {
-    id: 3,
-    type: "single",
-    question: "In computer science, what does 'API' stand for?",
-    options: [
-      "Advanced Programming Interface",
-      "Application Programming Interface",
-      "Automated Process Integration",
-      "Application Process Integration",
-    ],
-    correctAnswer: "Application Programming Interface",
-  },
-  {
-    id: 4,
-    type: "text",
-    question: "What is the chemical symbol for gold?",
-    correctAnswer: "Au",
-  },
-  {
-    id: 5,
-    type: "single",
-    question: "Which planet is known as the 'Red Planet'?",
-    options: ["Venus", "Mars", "Jupiter", "Saturn"],
-    correctAnswer: "Mars",
-  },
-]
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("input")
   const [notes, setNotes] = useState("")
-  const [answers, setAnswers] = useState<Record<number, string | string[]>>({})
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [answers, setAnswers] = useState<QuizAnswers>({})
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const generateQuiz = useCallback(async () => {
+    setIsGenerating(true)
+    setGenerationError(null)
+    setAnswers({})
+    setScreen("processing")
+
+    try {
+      const response = await fetch("/api/quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes }),
+      })
+
+      const data = (await response.json()) as {
+        error?: string
+        questions?: Question[]
+      }
+
+      if (!response.ok || !data.questions) {
+        throw new Error(data.error ?? "Could not generate a quiz from these notes.")
+      }
+
+      setQuestions(data.questions)
+      setScreen("quiz")
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error ? error.message : "Could not generate a quiz from these notes."
+      )
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [notes])
 
   const handleGenerate = useCallback(() => {
-    setScreen("processing")
-  }, [])
+    void generateQuiz()
+  }, [generateQuiz])
 
-  const handleProcessingComplete = useCallback(() => {
-    setScreen("quiz")
-  }, [])
-
-  const handleQuizComplete = useCallback((quizAnswers: Record<number, string | string[]>) => {
+  const handleQuizComplete = useCallback((quizAnswers: QuizAnswers) => {
     setAnswers(quizAnswers)
     setScreen("results")
   }, [])
@@ -82,7 +69,17 @@ export default function Home() {
 
   const handleNewNotes = useCallback(() => {
     setNotes("")
+    setQuestions([])
     setAnswers({})
+    setGenerationError(null)
+    setScreen("input")
+  }, [])
+
+  const handleRetryGeneration = useCallback(() => {
+    void generateQuiz()
+  }, [generateQuiz])
+
+  const handleBackToNotes = useCallback(() => {
     setScreen("input")
   }, [])
 
@@ -92,21 +89,27 @@ export default function Home() {
         <NotesInput
           notes={notes}
           setNotes={setNotes}
+          error={generationError}
+          isGenerating={isGenerating}
           onGenerate={handleGenerate}
         />
       )}
 
       {screen === "processing" && (
-        <ProcessingScreen onComplete={handleProcessingComplete} />
+        <ProcessingScreen
+          error={generationError}
+          onRetry={generationError ? handleRetryGeneration : undefined}
+          onBack={generationError ? handleBackToNotes : undefined}
+        />
       )}
 
-      {screen === "quiz" && (
-        <Quiz questions={quizQuestions} onComplete={handleQuizComplete} />
+      {screen === "quiz" && questions.length > 0 && (
+        <Quiz questions={questions} onComplete={handleQuizComplete} />
       )}
 
-      {screen === "results" && (
+      {screen === "results" && questions.length > 0 && (
         <ResultsScreen
-          questions={quizQuestions}
+          questions={questions}
           answers={answers}
           onTryAgain={handleTryAgain}
           onNewNotes={handleNewNotes}

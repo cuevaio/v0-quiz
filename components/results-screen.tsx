@@ -1,13 +1,13 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { type Question } from "@/components/question-card"
+import { type Question, type QuizAnswers } from "@/lib/quiz-schema"
 import { cn } from "@/lib/utils"
 import { Check, X, RotateCcw, FileText } from "lucide-react"
 
 interface ResultsScreenProps {
   questions: Question[]
-  answers: Record<number, string | string[]>
+  answers: QuizAnswers
   onTryAgain: () => void
   onNewNotes: () => void
 }

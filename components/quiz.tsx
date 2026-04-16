@@ -3,17 +3,22 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ProgressBar } from "@/components/progress-bar"
-import { QuestionCard, type Question } from "@/components/question-card"
+import { QuestionCard } from "@/components/question-card"
+import { type Question, type QuizAnswers } from "@/lib/quiz-schema"
 import { ArrowRight, ArrowLeft } from "lucide-react"
 
 interface QuizProps {
   questions: Question[]
-  onComplete: (answers: Record<number, string | string[]>) => void
+  onComplete: (answers: QuizAnswers) => void
 }
 
 export function Quiz({ questions, onComplete }: QuizProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, string | string[]>>({})
+  const [answers, setAnswers] = useState<QuizAnswers>({})
+
+  if (questions.length === 0) {
+    return null
+  }
 
   const currentQuestion = questions[currentIndex]
   const progress = ((currentIndex + 1) / questions.length) * 100

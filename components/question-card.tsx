@@ -1,15 +1,8 @@
 "use client"
 
+import { type Question } from "@/lib/quiz-schema"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
-
-export interface Question {
-  id: number
-  type: "single" | "multiple" | "text"
-  question: string
-  options?: string[]
-  correctAnswer: string | string[]
-}
 
 interface QuestionCardProps {
   question: Question
@@ -61,7 +54,8 @@ export function QuestionCard({ question, answer, setAnswer }: QuestionCardProps)
         <div className="space-y-3">
           {question.options.map((option, index) => (
             <button
-              key={index}
+              type="button"
+              key={`${question.id}-${option}-${index}`}
               onClick={() =>
                 question.type === "single"
                   ? handleSingleSelect(option)

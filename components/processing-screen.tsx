@@ -1,11 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+
 import { ProgressBar } from "@/components/progress-bar"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 interface ProcessingScreenProps {
-  onComplete: () => void
+  error?: string | null
+  onRetry?: () => void
+  onBack?: () => void
 }
 
 const processingSteps = [
@@ -26,59 +30,60 @@ const activityLogs = [
   "Finalizing quiz...",
 ]
 
-export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
+export function ProcessingScreen({ error, onRetry, onBack }: ProcessingScreenProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [logs, setLogs] = useState<string[]>([])
-  const [isComplete, setIsComplete] = useState(false)
 
   useEffect(() => {
-    // Progress animation
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressInterval)
-          return 100
+        if (error) {
+          return prev
         }
+
+        if (prev >= 92) {
+          return 92
+        }
+
         return prev + 0.5
       })
     }, 30)
 
-    // Step transitions
     const stepInterval = setInterval(() => {
       setCurrentStep((prev) => {
-        if (prev >= processingSteps.length - 1) {
-          clearInterval(stepInterval)
+        if (error) {
           return prev
         }
+
+        if (prev >= processingSteps.length - 1) {
+          return prev
+        }
+
         return prev + 1
       })
     }, 2000)
 
-    // Activity logs
     let logIndex = 0
     const logInterval = setInterval(() => {
+      if (error) {
+        return
+      }
+
       if (logIndex < activityLogs.length) {
         setLogs((prev) => [...prev.slice(-4), activityLogs[logIndex]])
-        logIndex++
+        logIndex += 1
       }
     }, 700)
-
-    // Completion
-    const completeTimeout = setTimeout(() => {
-      setIsComplete(true)
-      setTimeout(onComplete, 500)
-    }, 6000)
 
     return () => {
       clearInterval(progressInterval)
       clearInterval(stepInterval)
       clearInterval(logInterval)
-      clearTimeout(completeTimeout)
     }
-  }, [onComplete])
+  }, [error])
 
-  const renderStepText = (step: typeof processingSteps[0]) => {
+  const renderStepText = (step: (typeof processingSteps)[number]) => {
     const parts = step.text.split(step.highlight)
     return (
       <>
@@ -92,19 +97,18 @@ export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-xl space-y-12">
-        {/* Main status text */}
         <div className="text-center space-y-6">
           <div className="relative h-20 flex items-center justify-center overflow-hidden">
             {processingSteps.map((step, index) => (
               <h2
-                key={index}
+                key={step.text}
                 className={cn(
                   "absolute text-4xl md:text-5xl font-bold tracking-tight transition-all duration-500",
                   currentStep === index
                     ? "opacity-100 translate-y-0"
                     : currentStep > index
-                    ? "opacity-0 -translate-y-8"
-                    : "opacity-0 translate-y-8"
+                      ? "opacity-0 -translate-y-8"
+                      : "opacity-0 translate-y-8"
                 )}
               >
                 {renderStepText(step)}
@@ -113,11 +117,10 @@ export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
             ))}
           </div>
 
-          {/* Step indicators */}
           <div className="flex items-center justify-center gap-2">
-            {processingSteps.map((_, index) => (
+            {processingSteps.map((step, index) => (
               <div
-                key={index}
+                key={step.text}
                 className={cn(
                   "w-2 h-2 rounded-full transition-all duration-300",
                   index <= currentStep ? "bg-foreground" : "bg-border"
@@ -127,27 +130,25 @@ export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="space-y-3">
           <ProgressBar progress={progress} />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Processing</span>
+            <span>{error ? "Stopped" : "Processing"}</span>
             <span>{Math.round(progress)}%</span>
           </div>
         </div>
 
-        {/* Activity logs */}
         <div className="bg-card border border-border rounded-xl p-4 font-mono text-sm">
           <div className="text-muted-foreground mb-2 text-xs uppercase tracking-wide">
             System Activity
           </div>
           <div className="space-y-1 h-24 overflow-hidden">
-            {logs.map((log, index) => (
+            {logs.map((log) => (
               <div
-                key={index}
+                key={log}
                 className={cn(
                   "text-muted-foreground transition-all duration-300",
-                  index === logs.length - 1 ? "text-foreground" : ""
+                  log === logs[logs.length - 1] ? "text-foreground" : ""
                 )}
               >
                 <span className="text-muted-foreground/50 mr-2">{">"}</span>
@@ -157,12 +158,21 @@ export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
           </div>
         </div>
 
-        {/* Completion indicator */}
-        {isComplete && (
-          <div className="text-center animate-in fade-in duration-300">
-            <span className="text-lg font-medium text-foreground">
-              Quiz ready!
-            </span>
+        {error && (
+          <div className="space-y-4 text-center animate-in fade-in duration-300">
+            <p className="text-sm text-destructive">{error}</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              {onRetry && (
+                <Button onClick={onRetry} className="rounded-xl">
+                  Try Again
+                </Button>
+              )}
+              {onBack && (
+                <Button variant="outline" onClick={onBack} className="rounded-xl">
+                  Back to Notes
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>
